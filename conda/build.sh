@@ -1,4 +1,5 @@
 #!/bin/bash
+rm -f build
 mkdir build
 cd build
 
@@ -13,8 +14,11 @@ if [ "${SHORT_OS_STR:0:5}" == "Linux" ]; then
     IS_OSX=0
     # There's a bug with CMake at the moment whereby it can't download
     # using HTTPS - so we use curl to download the IPP library
-    mkdir -p $SRC_DIR/3rdparty/ippicv/downloads/linux-808b791a6eac9ed78d32a7666804320e
-    curl -L https://raw.githubusercontent.com/Itseez/opencv_3rdparty/81a676001ca8075ada498583e4166079e5744668/ippicv/ippicv_linux_20151201.tgz -o $SRC_DIR/3rdparty/ippicv/downloads/linux-808b791a6eac9ed78d32a7666804320e/ippicv_linux_20151201.tgz
+    ipp_dir="$SRC_DIR/3rdparty/ippicv/downloads/linux-808b791a6eac9ed78d32a7666804320e"
+    if [ ! -d "$ipp_dir" ]; then
+    	mkdir -p "$ipp_dir"
+    	curl -L https://raw.githubusercontent.com/Itseez/opencv_3rdparty/81a676001ca8075ada498583e4166079e5744668/ippicv/ippicv_linux_20151201.tgz -o "$ipp_dir/ippicv_linux_20151201.tgz"
+    fi
 fi
 if [ "${SHORT_OS_STR}" == "Darwin" ]; then
     IS_OSX=1
@@ -38,10 +42,13 @@ else
     OCV_PYTHON="-DBUILD_opencv_python2=1 -DPYTHON2_EXECUTABLE=$PYTHON -DPYTHON2_INCLUDE_DIR=$PREFIX/include/python${PY_VER} -DPYTHON2_LIBRARY=${PREFIX}/lib/libpython${PY_VER}.${DYNAMIC_EXT} -DPYTHON_INCLUDE_DIR2=$PREFIX/include/python${PY_VER}"
 fi
 
-git clone https://github.com/Itseez/opencv_contrib
-cd opencv_contrib
-git checkout tags/$PKG_VERSION
-cd ..
+if [ ! -d "../opencv_contrib" ]; then
+    cd ..
+    git clone https://github.com/Itseez/opencv_contrib
+    cd opencv_contrib
+    git checkout tags/$PKG_VERSION
+    cd ../build
+fi
 
 cmake .. -G"$CMAKE_GENERATOR"                                            \
     $TBB                                                                 \
@@ -61,11 +68,14 @@ cmake .. -G"$CMAKE_GENERATOR"                                            \
     -DWITH_OPENCL=0                                                      \
     -DWITH_OPENNI=0                                                      \
     -DWITH_FFMPEG=1                                                      \
+    -DBUILD_opencv_hdf=0                                                 \
     -DWITH_VTK=0                                                         \
     -DINSTALL_C_EXAMPLES=0                                               \
-    -DOPENCV_EXTRA_MODULES_PATH="opencv_contrib/modules"                 \
+    -DOPENCV_EXTRA_MODULES_PATH="../opencv_contrib/modules"              \
     -DCMAKE_SKIP_RPATH:bool=ON                                           \
-    -DCMAKE_INSTALL_PREFIX=$PREFIX
+    -DCMAKE_INSTALL_PREFIX=$PREFIX                                       \
+    -DCMAKE_C_COMPILER=${PREFIX}/bin/gcc                                 \
+    -DCMAKE_CXX_COMPILER=${PREFIX}/bin/g++
 make -j${CPU_COUNT}
 make install
 

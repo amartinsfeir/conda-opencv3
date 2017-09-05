@@ -15,6 +15,7 @@ requirements:
   build:
    - python
    - cmake
+   - gcc
    - hdf5 1.8.*      # [osx]
    - numpy >=1.10
    - eigen 3.*
